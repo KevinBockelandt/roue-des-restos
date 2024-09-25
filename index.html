@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La roue des restos !</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: "Comis Sans MS", "Comic Sans", cursive;
+    }
+    h1 {
+      margin: 2rem;
+      font-size: 3rem;
+    }
+    #page-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .flex-col {
+      display: flex;
+      flex-direction: column;
+    }
+    #buttons-options {
+      margin-top: 1rem;
+    }
+    #buttons-options button {
+      font-size: 1rem;
+      padding: 0.4rem 0;
+      width: 100%;
+      -webkit-margin-collapse: collapse;
+    }
+    #start-wheel {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      padding: 1rem;
+    }
+    #list-options td {
+      text-align: left;
+      padding: 0 0.2rem;
+    }
+    #wheel-section {
+      margin-left: 4rem;
+    }
+  </style>
+</head>
+<body>
+  
+<h1>La roue des restos !</h1>
+
+<div id="page-content">
+  <div class="flex-col">
+    <div id="list-options"></div>
+    <table id="buttons-options">
+      <tr>
+        <td><button id="all-sur-place" onclick="selectAllForType(0)">Tout sur place</button></td>
+        <td><button id="all-a-emporter" onclick="selectAllForType(0)">Tout à emporter</button></td>
+      </tr>
+      <tr>
+        <td><button id="none-sur-place" onclick="unselectAllForType(0)">Aucun sur place</button></td>
+        <td><button id="none-a-emporter" onclick="unselectAllForType(0)">Aucun à emporter</button></td>
+      </tr>
+    </table>
+
+  </div>
+  <div class="flex-col" id="wheel-section">
+    <svg id="svg-wheel"></svg>
+    <button id="start-wheel" onclick="startTurnWheel()">Tourner la roue !</button>
+  </div>
+</div>
+
+
+<script type="text/javascript">
+  var restos = [
+    { id: 'resto_1', name: "1er Mai", selected: true, type: 0 },
+    { id: 'resto_2', name: "3 Brasseurs", selected: true, type: 0 },
+    { id: 'resto_3', name: "Alexens", selected: true, type: 0 },
+    { id: 'resto_4', name: "Au coeur de l'Inde", selected: true, type: 0 },
+    { id: 'resto_5', name: "Bana-Bana", selected: true, type: 1 },
+    { id: 'resto_6', name: "Bombora", selected: true, type: 1 },
+    { id: 'resto_7', name: "Délices de Phuket", selected: true, type: 0 },
+    { id: 'resto_8', name: "Foodtruck du jour", selected: true, type: 1 },
+    { id: 'resto_9', name: "Gong", selected: true, type: 1 },
+    { id: 'resto_10', name: "Kok Piraat", selected: true, type: 0 },
+    { id: 'resto_11', name: "La famille", selected: true, type: 1 },
+    { id: 'resto_12', name: "Pause sandwich", selected: true, type: 1 },
+    { id: 'resto_13', name: "Pick it up", selected: true, type: 1 },
+    { id: 'resto_14', name: "Prima Fila", selected: true, type: 0 },
+    { id: 'resto_15', name: "Sales Mômes", selected: true, type: 0 },
+    { id: 'resto_16', name: "Switch ou bien", selected: true, type: 0 },
+    { id: 'resto_17', name: "Village CA (bagel)", selected: true, type: 1 },
+  ];
+
+  const wheelRadius = 220;
+  // Duration (in Ms) of the current turn for the wheel
+  var turnDuration = 0;
+  const minTurnDuration = 5000;
+  const maxTurnDuration = 8000;
+  // Current rotation (in degrees) of the wheel
+  var curRotation = 0;
+  // Timestamp of the last time we started a turn of the wheel
+  var lastTurnStart = 0;
+  // Timestamp of the last update of the wheel
+  var lastWheelUpdate = 0;
+  // Offset (in Ms) between 2 updates of the wheel
+  var offsetUpdateWheel = 20;
+  // Speed of the rotation expressed in degrees per Ms
+  const rotationSpeed = 0.4;
+
+  /**
+   * Shuffle items in an array (courtesy of ChatGPT)
+   * @param array The array to shuffle
+   * @return The shuffled array
+   */
+  const shuffleArray = (array) => {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  /**
+   * Cubic ease-in-out function (courtesy of ChatGPT)
+   * @param t Value between 0 and 1 representing the progress of the animation
+   * @return The eased value between 0 and 1
+   */
+  const easeInOutSine = (t) => Math.sin(Math.PI * t);
+
+  /**
+   * Convert an angle value in degrees to radians
+   * @param
+   */
+  const toRad = (value) => value * Math.PI / 180;
+
+  /**
+   * Create an arc to be displayed on the wheel
+   * @param svg The svg item displayed on the page
+   * @param radius Radius of the wheel
+   * @param curRotDeg Current rotation of the wheel in degrees
+   * @param numArc The total number of arcs on the wheel
+   * @param idxArc The index of the arc we are looking to create here
+   * @param text The text associated to this arc
+   */
+  const createArc = (svg, radius, curRotDeg, numArc, idxArc, text) => {
+    const cenX = radius;
+    const cenY = radius;
+
+    const curRotRad = toRad(curRotDeg);
+    const angleOffset = toRad(360 / numArc);
+    const angle = toRad(360 / numArc * idxArc + curRotDeg);
+    // The +5 at the end is to help center the text "vertically". To compensate the space below the baseline
+    const angleTextDeg = ((360 / numArc * idxArc) + (360 / numArc / 2)) + 5 + curRotDeg;
+    const angleTextRad = toRad(angleTextDeg);
+    const color = 360 / numArc * idxArc;
+
+    const startPointX = cenX + radius * Math.cos(angle);
+    const endPointX = cenX + radius * Math.cos(angle + angleOffset);
+    const startPointY = cenY + radius * Math.sin(angle);
+    const endPointY = cenY + radius * Math.sin(angle + angleOffset);
+
+    const textPointX = cenX + (radius / 4) * Math.cos(angleTextRad);
+    const textPointY = cenY + (radius / 4) * Math.sin(angleTextRad);
+
+    const arc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    arc.setAttribute("d", `M ${radius} ${radius} L ${startPointX} ${startPointY} A ${radius} ${radius} 0 0 1 ${endPointX} ${endPointY} Z`);
+    arc.setAttribute("fill", `hsl(${color}, 80%, 60%)`);
+    svg.appendChild(arc);
+
+    const svgText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    svgText.setAttribute("x", `${textPointX}`);
+    svgText.setAttribute("y", `${textPointY}`);
+    svgText.setAttribute("transform", `rotate(${angleTextDeg} ${textPointX} ${textPointY})`);
+    svgText.setAttribute("fill", "black");
+    svgText.textContent = text;
+    svg.appendChild(svgText);
+  }
+
+  /**
+   * Create the SVG wheel
+   * @param radius Radius of the wheel
+   * @param shouldShuffle True if the order of the options needs to be shuffled
+   * @param curRotation Current rotation angle when the wheel is turning
+   */
+  const createWheel = (radius, shouldShuffle, curRotation = 0) => {
+    const svgItem = document.getElementById("svg-wheel");
+    svgItem.setAttribute("width", `${radius * 2}`);
+    svgItem.setAttribute("height", `${radius * 2}`);
+    svgItem.setAttribute("viewBox", `0 0 ${radius * 2} ${radius * 2}`);
+
+    // clear potential existing content since we can execute this
+    // function several times
+    svgItem.innerHTML = '';
+
+    restos = shouldShuffle ? shuffleArray(restos) : restos;
+    const selectedOptions = restos.filter(e => e.selected);
+
+    // create an arc for selected option
+    for (let i = 0; i < selectedOptions.length; i++) {
+      createArc(svgItem, radius, curRotation, selectedOptions.length, i, selectedOptions[i].name);
+    }
+
+    // create the triangle indicating the selected option
+    const triangle = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    triangle.setAttribute("points", `${radius*2 - 20},${radius} ${radius*2},${radius+20} ${radius*2},${radius-20}`);
+    triangle.setAttribute("fill", "black");
+    svgItem.appendChild(triangle);
+  }
+
+  /**
+   * Create a cell of the table of options
+   * @param e The option to use for this cell
+   * @param row The row element this cell is to be part of
+   */
+  const createOptionCell = (e, row) => {
+    const cell = document.createElement("td");
+
+    const checkbox = document.createElement("input");
+    checkbox.setAttribute("type", "checkbox");
+    checkbox.setAttribute("id", `${e.id}`);
+    checkbox.setAttribute("name", `${e.id}`);
+    checkbox.setAttribute("onclick", `handleCheckbox(${e.id})`);
+    checkbox.checked = e.selected;
+
+    const label = document.createElement("label");
+    checkbox.setAttribute("for", `${e.id}`);
+    label.innerHTML = e.name;
+
+    cell.appendChild(checkbox);
+    cell.appendChild(label);
+    row.appendChild(cell);
+  }
+
+  /**
+   * Create the array of options you can select / unselect
+   */
+  const createList = () => {
+    const listResto = document.getElementById("list-options");
+    // clear potential existing content since we can execute this
+    // function several times
+    listResto.innerHTML = '';
+
+    const table = document.createElement("table");
+
+    const surPlace = restos.filter(e => e.type === 0);
+    const aEmporter = restos.filter(e => e.type === 1);
+    const maxNumItem = Math.max(surPlace.length, aEmporter.length);
+
+    for (let i = 0; i < maxNumItem; i++) {
+      const row = document.createElement("tr");
+
+      if (i < surPlace.length) {
+        const e = surPlace[i];
+        createOptionCell(e, row);
+      }
+
+      if (i < aEmporter.length) {
+        const e = aEmporter[i];
+        createOptionCell(e, row);
+      }
+
+      table.appendChild(row);
+    };
+
+    listResto.appendChild(table);
+  }
+
+  /**
+   * Things to do when a checkbox is updated
+   * @param event The event triggering the call to this function
+   */
+  const handleCheckbox = (event) => {
+    const optionToUpdate = restos.find(e => e.id === event.id);
+    optionToUpdate.selected = !optionToUpdate.selected;
+  
+    createWheel(wheelRadius, true);
+  }
+
+  /**
+   * Select all options for specified type
+   */
+  const selectAllForType = (type) => {
+    restos.forEach(e => {
+      if (e.type === type) e.selected = true;
+    });
+    createList();
+    createWheel(wheelRadius, true);
+  }
+
+  /**
+   * Unselect all options for specified type
+   */
+  const unselectAllForType = (type) => {
+    restos.forEach(e => {
+      if (e.type === type) e.selected = false;
+    });
+    createList();
+    createWheel(wheelRadius, true);
+  }
+
+  /**
+   * Start the turning of the wheel
+   */
+  const startTurnWheel = () => {
+    turnDuration = Math.floor(Math.random() * (maxTurnDuration - minTurnDuration + 1) + minTurnDuration);
+
+    lastTurnStart = Date.now();
+    lastWheelUpdate = Date.now();
+    curRotation = 0;
+
+    setTimeout(() => updateWheel(), offsetUpdateWheel);
+  }
+
+  /**
+   * Update the wheel when it turns
+   */
+  const updateWheel = () => {
+    const timeOffset = Date.now() - lastWheelUpdate;
+
+    const coefAnimation = (Date.now() - lastTurnStart) / turnDuration;
+    const curRotationSpeed = rotationSpeed * easeInOutSine(coefAnimation);
+
+    curRotation += timeOffset * curRotationSpeed;
+    createWheel(wheelRadius, false, curRotation);
+
+    if (Date.now() - lastTurnStart < turnDuration) {
+      setTimeout(() => updateWheel(), offsetUpdateWheel);
+    }
+
+    lastWheelUpdate = Date.now();
+  }
+
+  createWheel(wheelRadius, true);
+  createList();
+</script>
+</body>
+</html>
