@@ -55,11 +55,11 @@
     <table id="buttons-options">
       <tr>
         <td><button id="all-sur-place" onclick="selectAllForType(0)">Tout sur place</button></td>
-        <td><button id="all-a-emporter" onclick="selectAllForType(0)">Tout à emporter</button></td>
+        <td><button id="all-a-emporter" onclick="selectAllForType(1)">Tout à emporter</button></td>
       </tr>
       <tr>
         <td><button id="none-sur-place" onclick="unselectAllForType(0)">Aucun sur place</button></td>
-        <td><button id="none-a-emporter" onclick="unselectAllForType(0)">Aucun à emporter</button></td>
+        <td><button id="none-a-emporter" onclick="unselectAllForType(1)">Aucun à emporter</button></td>
       </tr>
     </table>
 
@@ -72,16 +72,16 @@
 
 
 <script type="text/javascript">
-  var restos = [
-    { id: 'resto_1', name: "1er Mai", selected: true, type: 0 },
-    { id: 'resto_2', name: "3 Brasseurs", selected: true, type: 0 },
-    { id: 'resto_3', name: "Alexens", selected: true, type: 0 },
-    { id: 'resto_4', name: "Au coeur de l'Inde", selected: true, type: 0 },
-    { id: 'resto_5', name: "Bana-Bana", selected: true, type: 1 },
-    { id: 'resto_6', name: "Bombora", selected: true, type: 1 },
-    { id: 'resto_7', name: "Délices de Phuket", selected: true, type: 0 },
-    { id: 'resto_8', name: "Foodtruck du jour", selected: true, type: 1 },
-    { id: 'resto_9', name: "Gong", selected: true, type: 1 },
+  let restos = [
+    { id: 'resto_01', name: "1er Mai", selected: true, type: 0 },
+    { id: 'resto_02', name: "3 Brasseurs", selected: true, type: 0 },
+    { id: 'resto_03', name: "Alexens", selected: true, type: 0 },
+    { id: 'resto_04', name: "Au coeur de l'Inde", selected: true, type: 0 },
+    { id: 'resto_05', name: "Bana-Bana", selected: true, type: 1 },
+    { id: 'resto_06', name: "Bombora", selected: true, type: 1 },
+    { id: 'resto_07', name: "Délices de Phuket", selected: true, type: 0 },
+    { id: 'resto_08', name: "Foodtruck du jour", selected: true, type: 1 },
+    { id: 'resto_09', name: "Gong", selected: true, type: 1 },
     { id: 'resto_10', name: "Kok Piraat", selected: true, type: 0 },
     { id: 'resto_11', name: "La famille", selected: true, type: 1 },
     { id: 'resto_12', name: "Pause sandwich", selected: true, type: 1 },
@@ -94,17 +94,17 @@
 
   const wheelRadius = 220;
   // Duration (in Ms) of the current turn for the wheel
-  var turnDuration = 0;
+  let turnDuration = 0;
   const minTurnDuration = 5000;
   const maxTurnDuration = 8000;
   // Current rotation (in degrees) of the wheel
-  var curRotation = 0;
+  let curRotation = 0;
   // Timestamp of the last time we started a turn of the wheel
-  var lastTurnStart = 0;
+  let lastTurnStart = 0;
   // Timestamp of the last update of the wheel
-  var lastWheelUpdate = 0;
+  let lastWheelUpdate = 0;
   // Offset (in Ms) between 2 updates of the wheel
-  var offsetUpdateWheel = 20;
+  let offsetUpdateWheel = 20;
   // Speed of the rotation expressed in degrees per Ms
   const rotationSpeed = 0.4;
 
@@ -194,7 +194,7 @@
     svgItem.innerHTML = '';
 
     restos = shouldShuffle ? shuffleArray(restos) : restos;
-    const selectedOptions = restos.filter(e => e.selected);
+    const selectedOptions = restos.filter(e => e.selected)
 
     // create an arc for selected option
     for (let i = 0; i < selectedOptions.length; i++) {
@@ -203,7 +203,8 @@
 
     // create the triangle indicating the selected option
     const triangle = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    triangle.setAttribute("points", `${radius*2 - 20},${radius} ${radius*2},${radius+20} ${radius*2},${radius-20}`);
+    // triangle.setAttribute("points", `${radius*2 - 20},${radius} ${radius*2},${radius+20} ${radius*2},${radius-20}`);
+    triangle.setAttribute("points", `${radius},30 ${radius+15},0 ${radius-15},0`);
     triangle.setAttribute("fill", "black");
     svgItem.appendChild(triangle);
   }
@@ -243,8 +244,8 @@
 
     const table = document.createElement("table");
 
-    const surPlace = restos.filter(e => e.type === 0);
-    const aEmporter = restos.filter(e => e.type === 1);
+    const surPlace = restos.filter(e => e.type === 0).sort((a, b) => a.id.localeCompare(b.id));
+    const aEmporter = restos.filter(e => e.type === 1).sort((a, b) => a.id.localeCompare(b.id));;
     const maxNumItem = Math.max(surPlace.length, aEmporter.length);
 
     for (let i = 0; i < maxNumItem; i++) {
