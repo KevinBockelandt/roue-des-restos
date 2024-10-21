@@ -15,6 +15,7 @@
     }
     #page-content {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
     }
@@ -24,6 +25,7 @@
     }
     #buttons-options {
       margin-top: 1rem;
+      margin-bottom: 2rem;
     }
     #buttons-options button {
       font-size: 1rem;
@@ -35,13 +37,18 @@
       margin-top: 1rem;
       font-size: 1.2rem;
       padding: 1rem;
+      width: 150px;
+      height: 150px;
+      border-radius: 100%;
+      border: 2px solid black;
     }
     #list-options td {
       text-align: left;
       padding: 0 0.2rem;
     }
     #wheel-section {
-      margin-left: 4rem;
+      margin-bottom: 2rem;
+      align-items: center;
     }
   </style>
 </head>
@@ -50,6 +57,11 @@
 <h1>La roue des restos !</h1>
 
 <div id="page-content">
+  <div class="flex-col" id="wheel-section">
+    <svg id="svg-wheel"></svg>
+    <button id="start-wheel" onclick="startTurnWheel()">Tourner la roue !</button>
+  </div>
+
   <div class="flex-col">
     <div id="list-options"></div>
     <table id="buttons-options">
@@ -62,14 +74,8 @@
         <td><button id="none-a-emporter" onclick="unselectAllForType(1)">Aucun à emporter</button></td>
       </tr>
     </table>
-
-  </div>
-  <div class="flex-col" id="wheel-section">
-    <svg id="svg-wheel"></svg>
-    <button id="start-wheel" onclick="startTurnWheel()">Tourner la roue !</button>
   </div>
 </div>
-
 
 <script type="text/javascript">
   let restos = [
@@ -93,21 +99,24 @@
     { id: 'resto_18', name: "Village CA (bagel)", selected: true, type: 1 },
   ];
 
+  // Radius of the wheel in pixels
   const wheelRadius = 220;
-  // Duration (in Ms) of the current turn for the wheel
-  let turnDuration = 0;
-  const minTurnDuration = 5000;
-  const maxTurnDuration = 8000;
   // Current rotation (in degrees) of the wheel
   let curRotation = 0;
-  // Timestamp of the last time we started a turn of the wheel
-  let lastTurnStart = 0;
   // Timestamp of the last update of the wheel
   let lastWheelUpdate = 0;
   // Offset (in Ms) between 2 updates of the wheel
   let offsetUpdateWheel = 20;
   // Speed of the rotation expressed in degrees per Ms
   const rotationSpeed = 0.4;
+  // Current charge level to make the wheel spin
+  let curChargeLevel = 0;
+  // Maximum level of charge
+  const maxChargeLevel = 4.0;
+  // Already reached max level of charge
+  let reachedMaxChargeLevel = false;
+  // Amount to add to the charge every click
+  const chargeIncrement = 0.6;
 
   /**
    * Shuffle items in an array (courtesy of ChatGPT)
@@ -281,6 +290,7 @@
 
   /**
    * Select all options for specified type
+   * @param type 'Sur place' (0) ou 'a emporter' (1)
    */
   const selectAllForType = (type) => {
     restos.forEach(e => {
@@ -292,6 +302,7 @@
 
   /**
    * Unselect all options for specified type
+   * @param type 'Sur place' (0) ou 'a emporter' (1)
    */
   const unselectAllForType = (type) => {
     restos.forEach(e => {
@@ -302,14 +313,34 @@
   }
 
   /**
+   * Update the turn wheel button
+   */
+  const updateButton = () => {
+    var e = document.getElementById('start-wheel');
+
+    // update color
+    const curColCoef = (((curChargeLevel / maxChargeLevel) * -1) + 1) * 255;
+    e.style.backgroundColor = `rgb(255, ${curColCoef}, ${curColCoef})`;
+
+    // update text
+    if (curChargeLevel <= 0) e.innerText = 'Tourner la roue !';
+    else if (reachedMaxChargeLevel) e.innerText = 'Parfait ;)';
+    else e.innerText = 'Encore !';
+  }
+
+  /**
    * Start the turning of the wheel
    */
   const startTurnWheel = () => {
-    turnDuration = Math.floor(Math.random() * (maxTurnDuration - minTurnDuration + 1) + minTurnDuration);
+    curChargeLevel += chargeIncrement;
+    if (curChargeLevel > maxChargeLevel) {
+      curChargeLevel = maxChargeLevel;
+      reachedMaxChargeLevel = true;
+    }
 
-    lastTurnStart = Date.now();
+    updateButton();
+
     lastWheelUpdate = Date.now();
-    curRotation = 0;
 
     setTimeout(() => updateWheel(), offsetUpdateWheel);
   }
@@ -319,22 +350,27 @@
    */
   const updateWheel = () => {
     const timeOffset = Date.now() - lastWheelUpdate;
-
-    const coefAnimation = (Date.now() - lastTurnStart) / turnDuration;
-    const curRotationSpeed = rotationSpeed * easeInOutSine(coefAnimation);
+    const curRotationSpeed = rotationSpeed * curChargeLevel;
 
     curRotation += timeOffset * curRotationSpeed;
     createWheel(wheelRadius, false, curRotation);
 
-    if (Date.now() - lastTurnStart < turnDuration) {
-      setTimeout(() => updateWheel(), offsetUpdateWheel);
-    }
-
     lastWheelUpdate = Date.now();
+
+    curChargeLevel -= timeOffset * 0.001;
+    console.log("curcharge: ", curChargeLevel);
+    updateButton();
+
+    if (curChargeLevel > 0) {
+      setTimeout(() => updateWheel(), offsetUpdateWheel);
+    } else {
+      reachedMaxChargeLevel = false;
+    }
   }
 
   createWheel(wheelRadius, true);
   createList();
+  updateButton();
 </script>
 </body>
 </html>
