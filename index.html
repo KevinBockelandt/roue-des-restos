@@ -15,7 +15,6 @@
     }
     #page-content {
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
     }
@@ -25,7 +24,6 @@
     }
     #buttons-options {
       margin-top: 1rem;
-      margin-bottom: 2rem;
     }
     #buttons-options button {
       font-size: 1rem;
@@ -50,6 +48,9 @@
       margin-bottom: 2rem;
       align-items: center;
     }
+    #block-options {
+      margin-right: 2rem;
+    }
   </style>
 </head>
 <body>
@@ -57,12 +58,7 @@
 <h1>La roue des restos !</h1>
 
 <div id="page-content">
-  <div class="flex-col" id="wheel-section">
-    <svg id="svg-wheel"></svg>
-    <button id="start-wheel" onclick="startTurnWheel()">Tourner la roue !</button>
-  </div>
-
-  <div class="flex-col">
+  <div id="block-options" class="flex-col">
     <div id="list-options"></div>
     <table id="buttons-options">
       <tr>
@@ -74,6 +70,11 @@
         <td><button id="none-a-emporter" onclick="unselectAllForType(1)">Aucun à emporter</button></td>
       </tr>
     </table>
+  </div>
+
+  <div class="flex-col" id="wheel-section">
+    <svg id="svg-wheel"></svg>
+    <button id="start-wheel" onclick="startTurnWheel()">Tourner la roue !</button>
   </div>
 </div>
 
