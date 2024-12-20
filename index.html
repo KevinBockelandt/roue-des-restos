@@ -35,10 +35,14 @@
       margin-top: 1rem;
       font-size: 1.2rem;
       padding: 1rem;
-      width: 150px;
-      height: 150px;
-      border-radius: 100%;
+      width: 350px;
+      height: 50px;
+      border-radius: 20px;
       border: 2px solid black;
+      background-color: white;
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-repeat: left;
     }
     #list-options td {
       text-align: left;
@@ -74,7 +78,7 @@
 
   <div class="flex-col" id="wheel-section">
     <svg id="svg-wheel"></svg>
-    <button id="start-wheel" onclick="startTurnWheel()">Tourner la roue !</button>
+    <button id="start-wheel"">Charger le lancer !</button>
   </div>
 </div>
 
@@ -109,15 +113,13 @@
   // Offset (in Ms) between 2 updates of the wheel
   let offsetUpdateWheel = 20;
   // Speed of the rotation expressed in degrees per Ms
-  const rotationSpeed = 0.4;
-  // Current charge level to make the wheel spin
+  const rotationSpeed = 0.3;
+  // Current charge level to make the wheel spin (between 0 and 100)
   let curChargeLevel = 0;
-  // Maximum level of charge
-  const maxChargeLevel = 4.0;
   // Already reached max level of charge
   let reachedMaxChargeLevel = false;
-  // Amount to add to the charge every click
-  const chargeIncrement = 0.6;
+  // Time interval between charges of the charging bar
+  const chargeSpeed = 10;
 
   /**
    * Shuffle items in an array (courtesy of ChatGPT)
@@ -314,35 +316,52 @@
   }
 
   /**
-   * Update the turn wheel button
+   * Setup the behaviour of the button to charge the wheel
    */
-  const updateButton = () => {
-    var e = document.getElementById('start-wheel');
+  const setupButton = () => {
+    var button = document.getElementById('start-wheel');
+    let intervalCharge;
+    let intervalDecharge;
+  
+    button.addEventListener('mousedown', () => {
+      intervalCharge = setInterval(() => {
+        curChargeLevel += 1;
+        if (curChargeLevel > 100) {
+          curChargeLevel = 100;
+          clearInterval(intervalCharge);
+        }
+        button.style.background = `linear-gradient(to right, #F55 ${curChargeLevel}%, #FFF ${curChargeLevel}%)`;
+      }, chargeSpeed);
+    });
 
-    // update color
-    const curColCoef = (((curChargeLevel / maxChargeLevel) * -1) + 1) * 255;
-    e.style.backgroundColor = `rgb(255, ${curColCoef}, ${curColCoef})`;
+    button.addEventListener('mouseup', () => {
+      clearInterval(intervalCharge);
 
-    // update text
-    if (curChargeLevel <= 0) e.innerText = 'Tourner la roue !';
-    else if (reachedMaxChargeLevel) e.innerText = 'Parfait ;)';
-    else e.innerText = 'Encore !';
+      if (curChargeLevel > 0) {
+        startTurnWheel();
+        intervalDecharge = setInterval(() => {
+          button.style.background = `linear-gradient(to right, #F55 ${curChargeLevel}%, #FFF ${curChargeLevel}%)`;
+        }, chargeSpeed);
+      }
+    });
+
+    button.addEventListener('mouseleave', () => {
+      clearInterval(intervalCharge);
+
+      if (curChargeLevel > 0) {
+        startTurnWheel();
+        intervalDecharge = setInterval(() => {
+          button.style.background = `linear-gradient(to right, #F55 ${curChargeLevel}%, #FFF ${curChargeLevel}%)`;
+        }, chargeSpeed);
+      }
+    });
   }
 
   /**
    * Start the turning of the wheel
    */
   const startTurnWheel = () => {
-    curChargeLevel += chargeIncrement;
-    if (curChargeLevel > maxChargeLevel) {
-      curChargeLevel = maxChargeLevel;
-      reachedMaxChargeLevel = true;
-    }
-
-    updateButton();
-
     lastWheelUpdate = Date.now();
-
     setTimeout(() => updateWheel(), offsetUpdateWheel);
   }
 
@@ -351,27 +370,22 @@
    */
   const updateWheel = () => {
     const timeOffset = Date.now() - lastWheelUpdate;
-    const curRotationSpeed = rotationSpeed * curChargeLevel;
+    const curRotationSpeed = rotationSpeed * curChargeLevel * 0.04;
 
     curRotation += timeOffset * curRotationSpeed;
     createWheel(wheelRadius, false, curRotation);
 
     lastWheelUpdate = Date.now();
-
-    curChargeLevel -= timeOffset * 0.001;
-    console.log("curcharge: ", curChargeLevel);
-    updateButton();
+    curChargeLevel -= timeOffset * 0.02;
 
     if (curChargeLevel > 0) {
       setTimeout(() => updateWheel(), offsetUpdateWheel);
-    } else {
-      reachedMaxChargeLevel = false;
     }
   }
 
   createWheel(wheelRadius, true);
   createList();
-  updateButton();
+  setupButton();
 </script>
 </body>
 </html>
